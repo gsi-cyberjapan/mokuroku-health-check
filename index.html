@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>地理院タイル目録一覧</title>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+  <script>
+  var find_template_urls = function(layers, rows) {
+    for(var i in layers) {
+      if(layers[i].type == 'LayerGroup') {
+        find_template_urls(layers[i].entries, rows);
+      } else if(layers[i].type == 'Layer') {
+        if(layers[i].url.indexOf('{z}/{x}/{y}') != -1) {
+          rows.push({
+            url: layers[i].url,
+            title: layers[i].title,
+          });
+        }
+      }
+    }
+  }
+
+  var load_layers_txt = function(url) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onload = function(e) {
+      var rows = [];
+      if(this.status == 200) {
+        var layers = JSON.parse(this.responseText);
+        find_template_urls(layers.layers, rows);
+      }
+      render_table(rows, url);
+    };
+    xhr.send();
+  }
+
+  var render_table = function(rows, url) {
+    var i = 1;
+    d3.select('body').append('h1').text(url);
+    var table = d3.select('body').append('table');
+    table.attr('border', 1);
+    var thead = table.append('thead');
+    var tbody = table.append('tbody');
+    thead.append('tr')
+      .selectAll('th')
+      .data(['#', '題名', 'URL', '存在', '最終更新日付'])
+      .enter()
+      .append('th')
+      .text(function(key) {return key;});
+    tbody.selectAll('tr')
+      .data(rows)
+      .enter()
+      .append('tr')
+        .selectAll('td')
+        .data(function(row) {
+          return [i++, row.title, row.url, row.available, row.utime];
+          })
+        .enter()
+        .append('td')
+        .text(function(d) {return d});
+  }
+
+  var layers_txts = [0, 1, 2, 3, 4, '_experimental'];
+  for(var i in layers_txts) {
+    var url = 'http://gsi-cyberjapan.github.io/gsimaps/layers_txt/layers' +
+      layers_txts[i] + '.txt';
+    load_layers_txt(url);
+  }
+  </script>
+</body>
+</html>
